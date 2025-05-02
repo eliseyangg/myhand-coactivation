@@ -1,0 +1,5 @@
+setup.py
+coactivation.egg-info/PKG-INFO
+coactivation.egg-info/SOURCES.txt
+coactivation.egg-info/dependency_links.txt
+coactivation.egg-info/top_level.txt
