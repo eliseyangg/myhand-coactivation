@@ -76,29 +76,33 @@ def generate_coactivation_by_gt(data_dir = 'collected_data'):
                 for file in files:
                     print(file)
                     if file[-4:] == '.csv':
-                        subject_id, set_num, subset = re.match(r'^([^_]+)_(.*)_(.+)$', file[:-4]).groups()
-                        is_patient = bool(re.match(r'^p\d+$',subject_id))
-                        if subject_id not in left_right_hand_dict:
-                            hand = np.nan
-                        else:
-                            hand = left_right_hand_dict[subject_id]
+                        try: 
+                            subject_id, set_num, subset = re.match(r'^([^_]+)_(.*)_(.+)$', file[:-4]).groups()
+                            is_patient = bool(re.match(r'^p\d+$',subject_id))
+                            if subject_id not in left_right_hand_dict:
+                                hand = np.nan
+                            else:
+                                hand = left_right_hand_dict[subject_id]
 
-                        # emg coactivation extraction
-                        df_preprocessed = preprocess_emgs(os.path.join(f"{root}", file), hz=200)
-                        df_to_concat = get_stratified_cm(df_preprocessed)
-                        len_df = len(df_to_concat)
+                            # emg coactivation extraction
+                            df_preprocessed = preprocess_emgs(os.path.join(f"{root}", file), hz=200)
+                            df_to_concat = get_stratified_cm(df_preprocessed)
+                            len_df = len(df_to_concat)
 
-                        # add metadata
-                        df_to_concat['folder'] = np.repeat(folder, len_df).astype(str)
-                        df_to_concat['subject_id'] = np.repeat(subject_id, len_df).astype(str)
-                        df_to_concat['set_num'] = np.repeat(set_num, len_df).astype(str)
-                        df_to_concat['subset'] = np.repeat(subset, len_df).astype(str)
-                        df_to_concat['subset'] = np.where(df_to_concat['set_num'] == 'grasp', 'grasping', df_to_concat['set_num'])
-                        df_to_concat['subset'] = np.where(df_to_concat['set_num'] == 'wrist', 'wrist_movement', df_to_concat['set_num'])
-                        df_to_concat['hand'] = np.repeat(hand, len_df).astype(str)
-                        df_to_concat['is_patient'] = np.repeat(is_patient, len_df).astype(bool)
-                        
-                        df_list.append(df_to_concat[cols])
+                            # add metadata
+                            df_to_concat['folder'] = np.repeat(folder, len_df).astype(str)
+                            df_to_concat['subject_id'] = np.repeat(subject_id, len_df).astype(str)
+                            df_to_concat['set_num'] = np.repeat(set_num, len_df).astype(str)
+                            df_to_concat['subset'] = np.repeat(subset, len_df).astype(str)
+                            df_to_concat['subset'] = np.where(df_to_concat['set_num'] == 'grasp', 'grasping', df_to_concat['set_num'])
+                            df_to_concat['subset'] = np.where(df_to_concat['set_num'] == 'wrist', 'wrist_movement', df_to_concat['set_num'])
+                            df_to_concat['hand'] = np.repeat(hand, len_df).astype(str)
+                            df_to_concat['is_patient'] = np.repeat(is_patient, len_df).astype(bool)
+                            
+                            df_list.append(df_to_concat[cols])
+
+                        except: # doesn't follow format
+                            continue
 
     df = pd.concat(df_list, ignore_index=True)
     return df
@@ -125,21 +129,24 @@ def generate_coactivation_dataset(data_dir = 'collected_data'):
 
                 for file in files:
                     if file[-4:] == '.csv':
-                        
-                        subject_id, set_num, subset = re.match(r'^([^_]+)_(.*)_(.+)$', file[:-4]).groups()
-                        is_patient = bool(re.match(r'^p\d+$',subject_id))
-                        if subject_id not in left_right_hand_dict:
-                            hand = np.nan
-                        else:
-                            hand = left_right_hand_dict[subject_id]
+                        try:
+                            subject_id, set_num, subset = re.match(r'^([^_]+)_(.*)_(.+)$', file[:-4]).groups()
+                            is_patient = bool(re.match(r'^p\d+$',subject_id))
+                            if subject_id not in left_right_hand_dict:
+                                hand = np.nan
+                            else:
+                                hand = left_right_hand_dict[subject_id]
 
-                        df_preprocessed = preprocess_emgs(os.path.join(f"{root}", file), hz=200)
-                        coactivation_map = get_coactivation_map(df_preprocessed)
-                        values = coactivation_map.to_numpy().flatten()
-                        if len(values)!=24:
+                            df_preprocessed = preprocess_emgs(os.path.join(f"{root}", file), hz=200)
+                            coactivation_map = get_coactivation_map(df_preprocessed)
+                            values = coactivation_map.to_numpy().flatten()
+                            if len(values)!=24:
+                                continue
+                            df_to_concat = pd.DataFrame([np.append([values], [folder, subject_id, hand, set_num, subset, is_patient])], columns=columns)
+                            df = pd.concat([df, df_to_concat])
+
+                        except: # doesn't follow format
                             continue
-                        df_to_concat = pd.DataFrame([np.append([values], [folder, subject_id, hand, set_num, subset, is_patient])], columns=columns)
-                        df = pd.concat([df, df_to_concat])
 
     for emg in np.char.add(np.array(['gt0','gt1','gt2'])[:,None], emgs).flatten():
         df[emg] = df[emg].astype(float)
@@ -207,15 +214,6 @@ def get_stratified_cm(df_preprocessed):
     cm_stratified = df_preprocessed[np.append(emgs, ['window','gt'])].groupby(['window','gt']).median().reset_index()
     return cm_stratified
 
-def compare_cm(cm1, cm2, metric='ruzicka'):
-    '''compare two coactivation maps using specified similarity metrics'''
-    if metric == 'ruzicka':
-        arr1 = cm_to_array(cm1)
-        arr2 = cm_to_array(cm2)
-        return np.sum(np.minimum(arr1, arr2)) / np.sum(np.maximum(arr1, arr2))
-    # @TODO: implement other metrics
-
-
 def get_all_healthy_map(dfgt=pd.DataFrame(), metric='median', data_dir='collected_data'):
     '''compute the average healthy coactivation map grouped by gt'''
     if dfgt.empty:
@@ -266,9 +264,24 @@ def mirror_emg(df: pd.DataFrame,
                 src = f'gt{g}emg{src_i}'
                 df_out.loc[mask, tgt] = tmp[src]
 
-    # else: do nothing
-
     return df_out
+
+
+from coactivation.similarity import mi_cm, g_cm, gmi_cm, ruzicka_cm
+
+def get_similarity_metric(cm1, cm2, metric='ruzicka'):
+    '''compare two coactivation maps using specified similarity metrics'''
+    if metric == 'ruzicka':
+        return ruzicka_cm(cm1, cm2)
+    if metric == 'g':
+        return g_cm(cm1, cm2)
+    if metric == 'mi':
+        return mi_cm(cm1, cm2)
+    if metric =='gmi':
+        return gmi_cm(cm1, cm2)
+
+def apply_similarity_metric(x, comparison_cm, metric='ruzicka'):
+    return (get_similarity_metric(array_to_cm(x.values), comparison_cm, metric=metric)[1])
 
 
 #======= Discard Pile ========#

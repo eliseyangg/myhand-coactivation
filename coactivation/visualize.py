@@ -40,7 +40,7 @@ def visualize_emgs(path):
     axs[1].legend(loc='upper right')
     axs[1].set_ylim(0, 2)
 
-def visualize_stratified_median_emgs(path, hz=50):
+def visualize_stratified_median_emgs(path, hz=200):
     '''plot median emg signals stratified by gt windows and highlight segments
 
     parameters
@@ -48,7 +48,7 @@ def visualize_stratified_median_emgs(path, hz=50):
     path : str
         path to the csv file for preprocessing and plotting
     hz : int, optional
-        sampling frequency for normalization (default: 50)
+        sampling frequency for normalization (default: 200)
 
     returns
     -------
@@ -59,47 +59,6 @@ def visualize_stratified_median_emgs(path, hz=50):
     df_preprocessed['window'] = np.cumsum(np.diff(df_preprocessed['gt'], prepend=0)!=0)
     plot_data = pd.merge(df_preprocessed[['window']], get_stratified_cm(df_preprocessed), on = 'window', how = 'left')[emgs].to_numpy().transpose()
 
-    fig, axs = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw={'height_ratios': [3, 1]})
-    for channel in range(8):
-        axs[0].plot(plot_data[channel], label=f'Channel {channel}', alpha=0.7) 
-    axs[0].set_ylabel('Value - EMG Space')
-    axs[0].legend(loc='upper right')
-    # GT Sequence
-    axs[1].plot(gt_sequence, label='GT Sequence', color='green', alpha=0.7)
-    axs[1].set_xlabel('Timestep')
-    axs[1].set_ylabel('GT Value')
-    axs[1].legend(loc='upper right')
-    axs[1].set_ylim(0, 2)
-
-    colors = {0: 'red', 1: 'blue', 2: 'green'}
-    prev_idx = 0
-    prev_value = gt_sequence.iloc[0]
-
-    for idx in range(1, len(gt_sequence)):
-        if gt_sequence.iloc[idx] != prev_value or idx == len(gt_sequence) - 1:
-            axs[0].axvspan(prev_idx, idx, color=colors[prev_value], alpha=0.05)
-            axs[1].axvspan(prev_idx, idx, color=colors[prev_value], alpha=0.05)
-            prev_idx = idx
-            prev_value = gt_sequence.iloc[idx]
-
-
-def visualize_stratified_median_emgs2(path, hz=50):
-    '''plot stratified median emg signals with direct grouping by window
-
-    parameters
-    ----------
-    path : str
-        path to the csv file for preprocessing and plotting
-    hz : int, optional
-        sampling frequency for normalization (default: 50)
-
-    returns
-    -------
-    None
-    '''
-    df_preprocessed = preprocess_emgs(path, hz=hz)
-    plot_data = get_stratified_cm(df_preprocessed)
-    gt_sequence = df_preprocessed['gt']
     fig, axs = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw={'height_ratios': [3, 1]})
     for channel in range(8):
         axs[0].plot(plot_data[channel], label=f'Channel {channel}', alpha=0.7) 
@@ -309,5 +268,32 @@ def plot_alignment_map(alignment_map, title1='', title2=''):
     plt.legend(handles=legend_labels, bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
     plt.tight_layout()
     return
+
+def visualize_stratified_median_emgs2(path, hz=200):
+    df_preprocessed = preprocess_emgs(path, hz=hz)
+    plot_data = get_stratified_cm(df_preprocessed)
+    gt_sequence = df_preprocessed['gt']
+    fig, axs = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw={'height_ratios': [3, 1]})
+    for channel in range(8):
+        axs[0].plot(plot_data[channel], label=f'Channel {channel}', alpha=0.7) 
+    axs[0].set_ylabel('Value - EMG Space')
+    axs[0].legend(loc='upper right')
+    # GT Sequence
+    axs[1].plot(gt_sequence, label='GT Sequence', color='green', alpha=0.7)
+    axs[1].set_xlabel('Timestep')
+    axs[1].set_ylabel('GT Value')
+    axs[1].legend(loc='upper right')
+    axs[1].set_ylim(0, 2)
+
+    colors = {0: 'red', 1: 'blue', 2: 'green'}
+    prev_idx = 0
+    prev_value = gt_sequence.iloc[0]
+
+    for idx in range(1, len(gt_sequence)):
+        if gt_sequence.iloc[idx] != prev_value or idx == len(gt_sequence) - 1:
+            axs[0].axvspan(prev_idx, idx, color=colors[prev_value], alpha=0.05)
+            axs[1].axvspan(prev_idx, idx, color=colors[prev_value], alpha=0.05)
+            prev_idx = idx
+            prev_value = gt_sequence.iloc[idx]
 '''
 #==============================#
