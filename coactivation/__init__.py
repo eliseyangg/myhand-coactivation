@@ -1,2 +1,2 @@
-from coactivation.process import preprocess_emgs, get_coactivation_map, get_all_healthy_map, get_coactivation_bool_map, get_alignment_map, array_to_cm, mirror_left_right,emgs
-from coactivation.visualize import visualize_emgs, plot_coactivation_corr, plot_coactivation_map, plot_bool_map, plot_alignment_map
+from coactivation.process import *
+from coactivation.visualize import *
